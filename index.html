@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Risk HKR — Copy-Trade Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- tokens ---------- */
+:root{
+  --bg:#121011; --bg-2:#171416;
+  --panel:#1b1719; --panel-2:#221d20; --panel-3:#2b2529;
+  --field:#100e0f;
+  --ink:#f1ecee; --ink-2:#bcb1b4; --ink-3:#978b8f;
+  --rule:#372f33; --rule-2:#272124;
+  --accent:#e04a3f; --accent-2:#ff8f6b;
+  --accent-bg:rgba(224,74,63,.12); --accent-line:rgba(224,74,63,.38);
+  --green:#4cd38c; --red:#ff6f6a;
+  --info:#8a93bd; --info-bg:rgba(138,147,189,.11); --info-line:rgba(138,147,189,.26);
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 6px 18px -8px rgba(0,0,0,.6);
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --r-lg:12px; --r-md:9px; --r-sm:7px;
+  --pad:clamp(14px,3vw,26px);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f5f2f1; --bg-2:#efeae9;
+  --panel:#ffffff; --panel-2:#f7f3f2; --panel-3:#ece5e4;
+  --field:#fbf9f8;
+  --ink:#1b1618; --ink-2:#575052; --ink-3:#7d7375;
+  --rule:#ddd4d2; --rule-2:#ebe4e3;
+  --accent:#c0392b; --accent-2:#a8382a;
+  --accent-bg:#fbeae7; --accent-line:rgba(192,57,43,.28);
+  --green:#1f7a4d; --red:#c0392b;
+  --info:#4a5482; --info-bg:#edeef5; --info-line:rgba(74,84,130,.22);
+  --shadow:0 1px 2px rgba(20,16,18,.06), 0 4px 12px rgba(20,16,18,.05);
+  color-scheme:light;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:clamp(14px,.3vw + 13.4px,15px);line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.wrap{max-width:1080px;margin:0 auto;padding:clamp(18px,3vw,28px) var(--pad) 72px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.pos{color:var(--green)}.neg{color:var(--red)}
+
+/* ---------- masthead ---------- */
+header.top{border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:20px;position:relative}
+header.top::after{content:'';position:absolute;left:0;bottom:-1px;width:56px;height:2px;background:var(--accent)}
+.topline{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:clamp(18px,.8vw + 15px,21px);font-weight:700;margin:0;letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--ink-3);font-weight:400}
+.tagline{font-size:12.5px;color:var(--ink-2);margin:6px 0 0}
+.tagline b{color:var(--accent-2);font-weight:600}
+
+/* ---------- gauge ---------- */
+.gauge{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-lg);padding:clamp(14px,2vw,18px);margin-bottom:14px}
+.gauge-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.gauge-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:600}
+.gauge-val{font-size:clamp(22px,1.8vw + 15px,29px);font-weight:600;letter-spacing:-.02em}
+.bar{height:8px;background:var(--panel-3);border-radius:99px;overflow:hidden;display:flex;gap:2px}
+.bar i{display:block;height:100%;flex:none;border-radius:99px;transition:width .3s ease}
+.bar .deployed{background:var(--info)}
+.bar .realized{background:var(--accent)}
+.gauge-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:11px;font-size:12px;color:var(--ink-2)}
+.gauge-legend span{display:flex;align-items:center;gap:6px}
+.gauge-legend b{color:var(--ink);font-weight:600}
+.dot{width:8px;height:8px;border-radius:2px;flex:none}
+
+/* ---------- stat strip ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(112px,14vw,150px),1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-lg);overflow:hidden;margin-bottom:20px}
+.stat{background:var(--panel);padding:12px 14px}
+.stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);font-weight:600;margin-bottom:4px}
+.stat .v{font-size:clamp(17px,.7vw + 14px,20px);font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat .s{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+/* ---------- tabs ---------- */
+nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{
+  background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;
+  padding:10px 14px;font-family:var(--sans);font-size:13.5px;font-weight:500;color:var(--ink-3);
+  cursor:pointer;white-space:nowrap;transition:color .12s;
+}
+nav.tabs button:hover{color:var(--ink-2)}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+nav.tabs .badge{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-left:6px}
+
+/* ---------- cards ---------- */
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden}
+.card-h{padding:12px clamp(14px,2vw,18px);border-bottom:1px solid var(--rule-2);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.card-h h2{font-size:12px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2)}
+.card-b{padding:clamp(14px,2vw,18px)}
+.step-tag{font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:99px;background:var(--accent-bg);color:var(--accent-2);font-weight:600;letter-spacing:.04em}
+.step-tag.b2{background:var(--info-bg);color:var(--info)}
+
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:860px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* ---------- fields ---------- */
+label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);font-weight:600;margin-bottom:6px}
+.hint{font-size:11.5px;color:var(--ink-3);font-weight:400;text-transform:none;letter-spacing:0}
+input,select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--rule);border-radius:var(--r-md);
+  background:var(--field);color:var(--ink);font-family:var(--sans);font-size:14px;
+  transition:border-color .12s,box-shadow .12s;
+}
+input:hover,select:hover,textarea:hover{border-color:var(--ink-3)}
+input.num-in,select.num-in{font-family:var(--mono);font-variant-numeric:tabular-nums}
+textarea{resize:vertical;min-height:66px;line-height:1.55}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+input:disabled,textarea:disabled,select:disabled{opacity:.45;cursor:not-allowed}
+input::placeholder,textarea::placeholder{color:var(--ink-3);opacity:.7}
+
+button.btn{
+  padding:10px 17px;border-radius:var(--r-md);border:1px solid var(--accent);
+  background:var(--accent);color:#fff;
+  font-family:var(--sans);font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:filter .12s,transform .06s;
+}
+button.btn:hover{filter:brightness(1.08)}
+button.btn:active{transform:translateY(1px)}
+button.btn.ghost{background:transparent;color:var(--ink-2);border-color:var(--rule)}
+button.btn.ghost:hover{color:var(--ink);border-color:var(--ink-3);filter:none}
+button.btn.sm{padding:6px 12px;font-size:12.5px}
+button.btn:disabled{opacity:.4;cursor:not-allowed}
+.row-btns{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+
+/* ---------- readout ---------- */
+.calc{background:var(--panel-2);border:1px solid var(--rule);border-left:3px solid var(--info);border-radius:var(--r-md);padding:13px 15px;margin-top:14px}
+.calc-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:4px 0}
+.calc-row .lbl{color:var(--ink-2)}
+.calc-row .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+.calc-row.big{border-top:1px solid var(--rule);margin-top:8px;padding-top:9px;font-size:15px}
+
+/* ---------- ledger ---------- */
+.entry{border:1px solid var(--rule);border-radius:var(--r-lg);background:var(--panel);margin-bottom:10px;overflow:hidden;transition:border-color .12s}
+.entry:hover{border-color:var(--ink-3)}
+.entry-h{padding:13px clamp(13px,2vw,16px);display:flex;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap;transition:background .12s}
+.entry-h:hover{background:var(--panel-2)}
+.tick{font-family:var(--mono);font-weight:600;font-size:14.5px;letter-spacing:-.01em}
+.pill{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:99px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.pill.copied,.pill.buy{background:var(--info-bg);color:var(--info)}
+.pill.sell{background:var(--accent-bg);color:var(--accent-2)}
+.pill.skipped,.pill.etf{background:var(--panel-3);color:var(--ink-2)}
+.entry-h .spacer{flex:1}
+.entry-h .pl{font-family:var(--mono);font-weight:600;font-size:13.5px}
+.entry-h .date{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.entry-b{padding:0 clamp(13px,2vw,16px) 16px;border-top:1px solid var(--rule-2)}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px;margin:13px 0}
+.kv dt{color:var(--ink-3);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;padding-top:2px}
+.kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.thesis-block{margin:13px 0}
+.thesis-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin:0 0 6px;font-weight:600}
+.thesis-block .body{font-size:13.5px;white-space:pre-wrap;line-height:1.6;color:var(--ink-2)}
+
+.empty{text-align:center;padding:44px 20px;color:var(--ink-3);font-size:14px}
+.empty b{display:block;color:var(--ink-2);font-size:15px;margin-bottom:6px;font-weight:600}
+
+.banner{padding:10px 14px;border-radius:var(--r-md);font-size:12.5px;margin-bottom:16px;display:none}
+.banner.warn{background:var(--accent-bg);color:var(--accent-2);border:1px solid var(--accent-line);display:block}
+
+table.sb{width:100%;border-collapse:collapse;font-size:13px}
+table.sb th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--rule)}
+table.sb td{padding:9px 10px;border-bottom:1px solid var(--rule-2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.sb tr:last-child td{border-bottom:none}
+table.sb td:first-child{font-family:var(--sans)}
+.scroll-x{overflow-x:auto}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.6;margin:12px 0 0}
+.note b{color:var(--ink)}
+
+/* ---------- ledger sections ---------- */
+.sec{display:flex;align-items:baseline;gap:10px;margin:24px 0 11px}
+.sec h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-weight:600;margin:0}
+.sec .cap{font-size:11.5px;color:var(--ink-3)}
+.sec .line{flex:1;height:1px;background:var(--rule)}
+
+.lot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px clamp(13px,2vw,16px);border-bottom:1px solid var(--rule-2);cursor:pointer;transition:background .12s}
+.lot:last-child{border-bottom:none}
+.lot:hover,.lot.on{background:var(--panel-2)}
+.lot .why{flex-basis:100%;font-size:12.5px;color:var(--ink-3);line-height:1.55}
+.lot .rem{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.lot .spacer{flex:1}
+.lot-x{flex-basis:100%;border-top:1px solid var(--rule-2);margin-top:10px;padding-top:12px}
+
+/* ---------- unlock prompt ---------- */
+#hkr-lock{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(8,6,7,.86);backdrop-filter:blur(6px)}
+#hkr-lock .lock-card{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-lg);
+  padding:26px 24px;max-width:400px;width:100%;box-shadow:var(--shadow)}
+#hkr-lock h3{margin:0 0 8px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+#hkr-lock p{margin:0 0 14px;font-size:12.5px;color:var(--ink-2);line-height:1.6}
+#hkr-lock code{font-family:var(--mono);font-size:11.5px;color:var(--accent-2);
+  background:var(--accent-bg);padding:1px 5px;border-radius:4px}
+#hkr-lock .lock-bad{color:var(--red);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="topline">
+    <h1>Risk HKR <em>— copy-trade journal</em></h1>
+    <div class="mono" style="font-size:11.5px;color:var(--ink-3)" id="ratioTag"></div>
+  </div>
+  <p class="tagline">Tuition, not a profit engine. Success test: <b>can I justify a trade on my own?</b> — not the rupee P&amp;L.</p>
+</header>
+
+<div class="banner warn" id="banner"></div>
+
+<div class="gauge">
+  <div class="gauge-head">
+    <span class="gauge-label">Fuel tank remaining</span>
+    <span class="gauge-val num" id="tankLeft">—</span>
+  </div>
+  <div class="bar"><i class="deployed" id="barDep" style="width:0%"></i><i class="realized" id="barReal" style="width:0%"></i></div>
+  <div class="gauge-legend">
+    <span><i class="dot" style="background:var(--blue)"></i>Deployed <b class="num" id="legDep">—</b></span>
+    <span><i class="dot" style="background:var(--amber)"></i>Realised <b class="num" id="legReal">—</b></span>
+    <span><i class="dot" style="background:var(--rule-2)"></i>Unspent <b class="num" id="legFree">—</b></span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="k">Calls logged</div><div class="v" id="sCalls">0</div><div class="s" id="sCallsSub">—</div></div>
+  <div class="stat"><div class="k">Copied</div><div class="v" id="sCopied">0</div><div class="s" id="sCopiedSub">—</div></div>
+  <div class="stat"><div class="k">My P&amp;L</div><div class="v" id="sPL">—</div><div class="s" id="sPLSub">real money</div></div>
+  <div class="stat"><div class="k">Missed</div><div class="v" id="sMissed">—</div><div class="s">skipped &amp; rose</div></div>
+  <div class="stat"><div class="k">Dodged</div><div class="v" id="sDodged">—</div><div class="s">skipped &amp; fell</div></div>
+  <div class="stat"><div class="k">His hit rate</div><div class="v" id="sHis">—</div><div class="s">incl. skipped</div></div>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="new">New call</button>
+  <button role="tab" aria-selected="false" data-tab="ledger">Ledger <span class="badge" id="bLedger"></span></button>
+  <button role="tab" aria-selected="false" data-tab="score">Scoreboard</button>
+  <button role="tab" aria-selected="false" data-tab="setup">Setup</button>
+</nav>
+
+<!-- ============ NEW CALL ============ -->
+<section id="tab-new">
+  <div class="card">
+    <div class="card-h">
+      <h2>His call</h2>
+      <span class="step-tag">step 1</span>
+    </div>
+    <div class="card-b">
+      <div class="grid g4">
+        <div><label class="f">Date</label><input type="date" id="nDate" class="num-in"></div>
+        <div><label class="f">Ticker</label><input type="text" id="nTicker" placeholder="NSDL" autocapitalize="characters"></div>
+        <div><label class="f">Type</label><select id="nKind"><option value="stock">Conviction stock</option><option value="etf">ETF</option></select></div>
+        <div><label class="f">He did</label><select id="nSide"><option value="buy">BOUGHT</option><option value="sell">SOLD</option></select></div>
+      </div>
+      <div class="grid g3" style="margin-top:12px">
+        <div><label class="f">His qty</label><input type="number" id="nHisQty" class="num-in" placeholder="0" min="0" step="1"></div>
+        <div><label class="f">His price <span class="hint">&#8377;</span></label><input type="number" id="nHisPrice" class="num-in" placeholder="0.00" min="0" step="0.01"></div>
+        <div><label class="f">Price now <span class="hint">&#8377; — what I'd pay</span></label><input type="number" id="nMyPrice" class="num-in" placeholder="0.00" min="0" step="0.01"></div>
+      </div>
+
+      <div class="calc" id="calcBox">
+        <div class="calc-row" id="rowHeld" style="display:none"><span class="lbl">Units I hold</span><span class="val" id="cHeld">0</span></div>
+        <div class="calc-row"><span class="lbl" id="cHisLbl">His rupee value</span><span class="val" id="cHisVal">&#8377;0</span></div>
+        <div class="calc-row"><span class="lbl">My target @ <span id="cRatio">5%</span></span><span class="val" id="cTarget">&#8377;0</span></div>
+        <div class="calc-row"><span class="lbl" id="cSharesLbl">Whole shares (rounded down)</span><span class="val" id="cShares">0</span></div>
+        <div class="calc-row big"><span class="lbl" id="cValLbl">My spend</span><span class="val" id="cVal">&#8377;0</span></div>
+        <div class="calc-row"><span class="lbl">Tank after this trade</span><span class="val" id="cAfter">&#8377;0</span></div>
+      </div>
+      <p class="note">If you skip this call, these numbers are still recorded — that's how the app tells you later what skipping cost you.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>His reasoning</h2>
+      <span class="step-tag b2">step 2</span>
+    </div>
+    <div class="card-b">
+      <div>
+        <label class="f">His thesis</label>
+        <textarea id="nHisThesis" placeholder="Why he says he bought it"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>My view &amp; decision</h2>
+      <span class="step-tag b2">step 3</span>
+    </div>
+    <div class="card-b">
+      <div>
+        <label class="f">My view on his reasoning <span class="hint">— does it convince me, and why / why not?</span></label>
+        <textarea id="nMyView" placeholder="Which part makes sense to me. Which part I don't follow. What I'd want to check myself."></textarea>
+      </div>
+      <div class="grid g2" style="margin-top:12px">
+        <div>
+          <label class="f">Decision</label>
+          <select id="nDecision">
+            <option value="copied">COPIED — money in</option>
+            <option value="skipped">SKIPPED — track only</option>
+          </select>
+        </div>
+        <div><label class="f">If skipped, why</label><input type="text" id="nSkipReason" placeholder="ETF / tank low / didn't follow it"></div>
+      </div>
+      <div class="row-btns" style="margin-top:14px">
+        <button class="btn" id="btnSave">Save to ledger</button>
+        <button class="btn ghost" id="btnDiscard">Clear</button>
+        <span class="note" id="lockWarn" style="margin:0"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LEDGER ============ -->
+<section id="tab-ledger" style="display:none">
+  <div class="card">
+    <div class="card-h">
+      <h2>Ledger</h2>
+      <select id="filt" autocomplete="off" style="width:auto;font-size:13px;padding:5px 9px">
+        <option value="all">Everything</option>
+        <option value="copied">Positions only</option>
+        <option value="skipped">Skipped (shadow book)</option>
+        <option value="open">Open positions</option>
+        <option value="closed">Closed out</option>
+      </select>
+    </div>
+  </div>
+  <div class="sec"><h3>Positions</h3><span class="cap" id="capPos"></span><span class="line"></span></div>
+  <div id="ledgerList"></div>
+  <div class="sec"><h3>Every call, lot by lot</h3><span class="cap" id="capLots"></span><span class="line"></span></div>
+  <div class="card"><div id="lotList"></div></div>
+</section>
+
+<!-- ============ SCOREBOARD ============ -->
+<section id="tab-score" style="display:none">
+  <div class="card">
+    <div class="card-h"><h2>What each decision was worth</h2></div>
+    <div class="card-b">
+      <div class="scroll-x">
+        <table class="sb">
+          <thead><tr><th>Outcome</th><th>Calls</th><th>Rupees</th><th>Meaning</th></tr></thead>
+          <tbody id="quadBody"></tbody>
+        </table>
+      </div>
+      <p class="note"><b>Read it as:</b> the top two rows are real money in your account. The bottom two are what your skipping decisions were worth — <b>missed</b> is the cost of sitting out, <b>dodged</b> is money you saved by sitting out. If missed keeps outgrowing dodged, you're skipping too much.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h2>His hit rate — forward verification</h2></div>
+    <div class="card-b">
+      <div class="scroll-x">
+        <table class="sb">
+          <thead><tr><th>Cohort</th><th>Calls</th><th>Rose</th><th>Hit rate</th></tr></thead>
+          <tbody id="sbBody"></tbody>
+        </table>
+      </div>
+      <p class="note"><b>Why skipped calls matter:</b> his holdings screen only shows survivors. Logging every call — copied or not — builds a loss-inclusive hit rate from primary data. Watch the ETF row: that's index beta, not stock-picking skill.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section id="tab-setup" style="display:none">
+  <div class="card">
+    <div class="card-h"><h2>Mandate parameters</h2></div>
+    <div class="card-b">
+      <div class="grid g3">
+        <div><label class="f">Fuel tank <span class="hint">₹</span></label><input type="number" id="setTank" class="num-in" step="1000"></div>
+        <div><label class="f">My core base <span class="hint">₹</span></label><input type="number" id="setMine" class="num-in" step="1000"></div>
+        <div><label class="f">His core base <span class="hint">₹</span></label><input type="number" id="setHis" class="num-in" step="10000"></div>
+      </div>
+      <div class="calc" style="margin-top:12px">
+        <div class="calc-row big"><span class="lbl">Core-to-core sizing ratio</span><span class="val" id="setRatio">—</span></div>
+      </div>
+      <div class="row-btns" style="margin-top:14px"><button class="btn" id="btnSaveSet">Save parameters</button></div>
+      <p class="note"><b>Ratio</b> sets how big each trade is (5% of his rupee value). <b>Tank</b> caps total spend. Different jobs — the tank binds first. You're copying conviction entries, not reconstructing a ₹1.456cr book.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h2>Standing rules</h2></div>
+    <div class="card-b">
+      <p class="note" style="margin:0">
+      · ETFs are allowed, but reported as their own cohort — index beta is not stock-picking skill.<br>
+      · His thesis is logged first, then my read on it — the current rung. Cold-thesis-first is the month-3 upgrade.<br>
+      · Skipped calls are still tracked to outcome.<br>
+      · Tank is ₹1,00,000 — the full mandate cap, now funded. No further top-ups.<br>
+      · Realised P&amp;L flows back into the tank: gains lift it, losses cut it permanently.<br>
+      · Nothing here touches Core (HKC) or the trigger ladder (HKM).
+      </p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ========= CONFIG — paste your Apps Script /exec URL here ========= */
+const API = 'https://script.google.com/macros/s/AKfycbzarO2LkUgd-wpYMC6n-9Z2nXzNS7hUxq4UDFI5Klz0omaboRe9oCH3UsUhawvBU90/exec';
+/* The secret is NOT here on purpose. It lives in Script Properties on the
+   backend and in this browser's localStorage, handed over once via the unlock
+   prompt. That is what keeps the published page free of secrets. */
+const AUTH={
+  KEY:'hkr_api_token',
+  get(){try{return localStorage.getItem(this.KEY)||'';}catch(e){return '';}},
+  set(t){try{localStorage.setItem(this.KEY,t);}catch(e){}},
+  clear(){try{localStorage.removeItem(this.KEY);}catch(e){}}
+};
+/* ================================================================= */
+const S={calls:[],cfg:{tank:100000,mine:727000,his:14560000},open:null,tab:'new'};
+const R=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+const $=id=>document.getElementById(id);
+const ratio=()=>S.cfg.his>0?S.cfg.mine/S.cfg.his:0.05;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* marks are per ticker, not per call — kept in config so they ride the same sheet */
+const getMark=t=>S.cfg['m:'+t]||0;
+function setMark(t,v){ if(v>0)S.cfg['m:'+t]=v; else delete S.cfg['m:'+t]; }
+
+/* ---------- positions: his calls folded into holdings, sells eat lots FIFO ---------- */
+function positions(){
+  const evs=S.calls.filter(c=>c.decision==='copied').slice()
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||'').localeCompare(b.createdAt||''));
+  const by={};
+  for(const e of evs){
+    const p=by[e.ticker]||(by[e.ticker]={ticker:e.ticker,kind:e.kind,lots:[],invested:0,proceeds:0,realised:0,events:[]});
+    p.events.push(e); if(e.kind)p.kind=e.kind;
+    const sh=e.myShares||0, px=e.myPrice||0;
+    if(e.side==='sell'){
+      let left=sh, cost=0;
+      while(left>0 && p.lots.length){            // oldest lot first; spill into the next only for the excess
+        const lot=p.lots[0], take=Math.min(left,lot.shares);
+        cost+=take*lot.price; lot.shares-=take; left-=take;
+        if(lot.shares<=0)p.lots.shift();
+      }
+      const got=(sh-left)*px;
+      p.proceeds+=got; p.realised+=got-cost;
+    }else{
+      p.lots.push({shares:sh,price:px,date:e.date,id:e.id});
+      p.invested+=sh*px;
+    }
+  }
+  return Object.values(by).map(p=>{
+    const units=p.lots.reduce((a,l)=>a+l.shares,0);
+    const costOpen=p.lots.reduce((a,l)=>a+l.shares*l.price,0);
+    const mark=getMark(p.ticker);
+    const avg=units>0?costOpen/units:0;
+    const unreal=(units>0&&mark>0)?(mark-avg)*units:null;
+    return Object.assign(p,{units,costOpen,avg,mark,unreal,total:p.realised+(unreal||0),
+      scored:(unreal!==null||p.realised!==0)});
+  }).sort((a,b)=>(b.units>0)-(a.units>0)||a.ticker.localeCompare(b.ticker));
+}
+const unitsHeld=t=>{const p=positions().find(x=>x.ticker===t);return p?p.units:0;};
+
+/* ---------- money ---------- */
+function money(){
+  let invested=0,proceeds=0,dep=0,realised=0;
+  for(const p of positions()){invested+=p.invested;proceeds+=p.proceeds;dep+=p.costOpen;realised+=p.realised;}
+  return {dep,free:S.cfg.tank-invested+proceeds,realised,invested,proceeds};
+}
+
+/* ---------- shadow book: skipped buys only, never became a position ---------- */
+function shadow(c){
+  if(c.decision!=='skipped'||c.side==='sell')return null;
+  const m=getMark(c.ticker);
+  if(!m||!c.myShares||!c.myPrice)return null;
+  return (m-c.myPrice)*c.myShares;
+}
+
+/* "worked" = latest price above HIS entry. His scorecard, not mine. Buys only. */
+function worked(c){
+  if(c.side==='sell')return null;
+  const m=getMark(c.ticker);
+  if(!m||!c.hisPrice)return null;
+  return m>c.hisPrice;
+}
+
+/* ---------- scoreboard ---------- */
+function quad(){
+  const z=()=>({n:0,rs:0});
+  const o={made:z(),cost:z(),missed:z(),dodged:z()};
+  for(const p of positions()){
+    if(!p.scored)continue;
+    const k=p.total>=0?'made':'cost'; o[k].n++; o[k].rs+=p.total;
+  }
+  for(const c of S.calls){
+    const v=shadow(c); if(v===null)continue;
+    const k=v>=0?'missed':'dodged'; o[k].n++; o[k].rs+=v;
+  }
+  return o;
+}
+
+/* ---------- render ---------- */
+function renderTop(){
+  const m=money(),T=S.cfg.tank||1;
+  $('tankLeft').textContent=R(m.free);
+  // once realised profit lifts the tank past the mandate cap the two segments would
+  // sum past 100% and collapse, so scale against whatever is actually in play
+  const gain=Math.max(0,m.realised), base=Math.max(T,m.dep+gain)||1;
+  $('barDep').style.width=(m.dep/base*100)+'%';
+  $('barReal').style.width=(gain/base*100)+'%';
+  document.querySelector('.gauge-label').textContent =
+    m.free>T ? 'Fuel tank remaining — '+R(m.free-T)+' above the cap'
+             : (m.free<0 ? 'Fuel tank — '+R(-m.free)+' OVERDRAWN' : 'Fuel tank remaining');
+  $('legDep').textContent=R(m.dep);
+  $('legReal').textContent=R(m.realised);
+  $('legFree').textContent=R(m.free);
+
+  const ps=positions();
+  const stocks=S.calls.filter(c=>c.kind!=='etf');
+  $('sCalls').textContent=S.calls.length;
+  $('sCallsSub').textContent=stocks.length+' stock · '+(S.calls.length-stocks.length)+' ETF';
+  $('sCopied').textContent=ps.filter(p=>p.units>0).length;
+  $('sCopiedSub').textContent=S.calls.filter(c=>c.decision==='skipped').length+' skipped';
+
+  const q=quad(), pl=q.made.rs+q.cost.rs, plEl=$('sPL');
+  if(q.made.n+q.cost.n){plEl.textContent=(pl>=0?'+':'')+R(pl);plEl.className='v '+(pl>=0?'pos':'neg');
+    $('sPLSub').textContent=q.made.n+' up · '+q.cost.n+' down';}
+  else{plEl.textContent='—';plEl.className='v';$('sPLSub').textContent='mark prices to see';}
+
+  const ms=$('sMissed');
+  if(q.missed.n){ms.textContent=R(q.missed.rs);ms.className='v neg';}else{ms.textContent='—';ms.className='v';}
+  const dg=$('sDodged');
+  if(q.dodged.n){dg.textContent=R(Math.abs(q.dodged.rs));dg.className='v pos';}else{dg.textContent='—';dg.className='v';}
+
+  const ev=S.calls.map(worked).filter(v=>v!==null);
+  $('sHis').textContent=ev.length?Math.round(ev.filter(Boolean).length/ev.length*100)+'%':'—';
+
+  $('ratioTag').textContent='ratio '+(ratio()*100).toFixed(2)+'% · tank '+R(S.cfg.tank);
+  $('bLedger').textContent=ps.length?'('+ps.length+')':'';
+}
+
+function renderCalc(){
+  const sell=$('nSide').value==='sell';
+  const t=$('nTicker').value.trim().toUpperCase();
+  const q=+$('nHisQty').value||0,hp=+$('nHisPrice').value||0,mp=+$('nMyPrice').value||0;
+  const held=t?unitsHeld(t):0;
+  const hv=q*hp, tgt=hv*ratio();
+  let sh=mp>0?Math.floor(tgt/mp):0, capped=false;
+  if(sell&&sh>held){sh=held;capped=true;}            // only if we have them
+  const val=sh*mp;
+
+  $('rowHeld').style.display=sell?'':'none';
+  $('cHeld').textContent=held+(capped?' — capped to holdings':'');
+  $('cHisLbl').textContent=sell?'His sale value':'His rupee value';
+  $('cHisVal').textContent=R(hv);
+  $('cRatio').textContent=(ratio()*100).toFixed(2)+'%';
+  $('cTarget').textContent=R(tgt);
+  $('cSharesLbl').textContent=sell?'Shares I sell':'Whole shares (rounded down)';
+  $('cShares').textContent=sh;
+  $('cValLbl').textContent=sell?'My proceeds':'My spend';
+  $('cVal').textContent=R(val);
+  const after=sell?money().free+val:money().free-val;
+  $('cAfter').textContent=R(after);
+  $('cAfter').style.color=after<0?'var(--red)':'';
+  return {q,hp,mp,hv,tgt,sh,val,held,sell,capped};
+}
+
+/* every call, newest first, with how much of each buy lot is still held */
+function lotRows(){
+  const rem={};
+  for(const p of positions())for(const l of p.lots)rem[l.id]=(rem[l.id]||0)+l.shares;
+  return S.calls.slice()
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''))
+    .map(c=>Object.assign({},c,{remaining:(c.side==='buy'&&c.decision==='copied')?(rem[c.id]||0):null}));
+}
+
+function renderLedger(){
+  const f=$('filt').value;
+  const ps=positions();
+
+  // ---- section 1: grouped positions
+  let l=[];
+  if(f!=='skipped'){
+    l=ps;
+    if(f==='open')l=ps.filter(p=>p.units>0);
+    if(f==='closed')l=ps.filter(p=>p.units<=0);
+  }
+  $('ledgerList').innerHTML=l.length?l.map(posCard).join('')
+    :'<div class="card"><div class="empty"><b>No positions here</b>Copy one of his calls and it shows up as a holding.</div></div>';
+  $('capPos').textContent=l.length?l.length+' ticker'+(l.length>1?'s':''):'';
+
+  // ---- section 2: flat call list
+  const openT=new Set(ps.filter(p=>p.units>0).map(p=>p.ticker));
+  const shutT=new Set(ps.filter(p=>p.units<=0).map(p=>p.ticker));
+  let rows=lotRows();
+  if(f==='copied') rows=rows.filter(c=>c.decision==='copied');
+  if(f==='skipped')rows=rows.filter(c=>c.decision==='skipped');
+  if(f==='open')   rows=rows.filter(c=>openT.has(c.ticker));
+  if(f==='closed') rows=rows.filter(c=>shutT.has(c.ticker));
+  $('lotList').innerHTML=rows.length?rows.map(lotRow).join('')
+    :'<div class="empty">Nothing logged yet.</div>';
+  $('capLots').textContent=rows.length?rows.length+' call'+(rows.length>1?'s':''):'';
+}
+
+function lotRow(c){
+  const skip=c.decision==='skipped', sell=c.side==='sell';
+  const v=skip?shadow(c):null;
+  let right='';
+  if(skip&&v!==null)right=`<span class="pl ${v<0?'pos':'neg'}">${v>=0?'missed ':'dodged '}${R(Math.abs(v))}</span>`;
+  else if(c.remaining!==null)right=`<span class="rem">${c.remaining} of ${c.myShares} still held</span>`;
+  const open=S.open==='c:'+c.id;
+  return `<div class="lot ${open?'on':''}" data-id="c:${c.id}">
+    <span class="tick">${esc(c.ticker)}</span>
+    <span class="pill ${skip?'skipped':(sell?'sell':'buy')}">${skip?'skipped ':''}${esc(c.side)}</span>
+    ${c.kind==='etf'?'<span class="pill etf">ETF</span>':''}
+    <span class="mono" style="font-size:13px">${c.myShares} sh @ ${R(c.myPrice)}${skip?'':' = '+R(c.myValue)}</span>
+    <span class="spacer" style="flex:1"></span>
+    ${right}
+    <span class="date">${esc(c.date)}</span>
+    <span class="why">He ${sell?'sold':'bought'} ${c.hisQty} @ ${R(c.hisPrice)} = ${R((c.hisQty||0)*(c.hisPrice||0))}${skip?' · skipped: '+(esc(c.skipReason)||'—'):''}</span>
+    ${open?`<div class="lot-x">
+      <div class="thesis-block" style="margin-top:0"><h4>His thesis</h4><div class="body">${esc(c.hisThesis)||'—'}</div></div>
+      <div class="thesis-block"><h4>My view</h4><div class="body">${esc(c.myView)||'—'}</div></div>
+      <div class="row-btns"><button class="btn ghost sm" data-del="${c.id}">Delete this call</button></div>
+    </div>`:''}
+  </div>`;
+}
+
+function posCard(p){
+  const open=S.open==='p:'+p.ticker;
+  const tag=p.scored?`<span class="pl ${p.total>=0?'pos':'neg'}">${p.total>=0?'+':'-'}${R(Math.abs(p.total))}</span>`:'';
+  return `<div class="entry">
+    <div class="entry-h" data-id="p:${esc(p.ticker)}">
+      <span class="tick">${esc(p.ticker)}</span>
+      ${p.units>0?`<span class="pill copied">${p.units} sh @ ${R(p.avg)}</span>`
+                 :'<span class="pill skipped">closed out</span>'}
+      ${p.kind==='etf'?'<span class="pill etf">ETF</span>':''}
+      <span class="spacer"></span>${tag}
+      <span class="date">${p.events.length} call${p.events.length>1?'s':''}</span>
+    </div>
+    ${open?posBody(p):''}
+  </div>`;
+}
+
+function posBody(p){
+  const hist=p.events.slice().reverse().map(e=>`
+    <div style="padding:9px 0;border-bottom:1px solid var(--rule-2)">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="pill ${e.side==='sell'?'skipped':'copied'}">${esc(e.side)}</span>
+        <span class="mono" style="font-size:13px">${e.myShares} sh @ ${R(e.myPrice)} = ${R(e.myValue)}</span>
+        <span class="spacer"></span>
+        <span class="date">${esc(e.date)}</span>
+        <button class="btn ghost sm" data-del="${e.id}">Delete</button>
+      </div>
+      <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px">He ${e.side==='sell'?'sold':'bought'} ${e.hisQty} @ ${R(e.hisPrice)} = ${R((e.hisQty||0)*(e.hisPrice||0))}</div>
+      ${e.hisThesis?`<div class="thesis-block" style="margin:7px 0 0"><h4>His thesis</h4><div class="body">${esc(e.hisThesis)}</div></div>`:''}
+      ${e.myView?`<div class="thesis-block" style="margin:7px 0 0"><h4>My view</h4><div class="body">${esc(e.myView)}</div></div>`:''}
+    </div>`).join('');
+  const rl=p.realised, ur=p.unreal;
+  return `<div class="entry-b">
+    <div class="calc" style="margin:0 0 12px">
+      <div class="calc-row"><span class="lbl">Units held</span><span class="val">${p.units}</span></div>
+      <div class="calc-row"><span class="lbl">Average cost</span><span class="val">${R(p.avg)}</span></div>
+      <div class="calc-row"><span class="lbl">Money in open lots</span><span class="val">${R(p.costOpen)}</span></div>
+      <div class="calc-row"><span class="lbl">Realised</span><span class="val ${rl>=0?'pos':'neg'}">${rl?(rl>=0?'+':'-')+R(Math.abs(rl)):'—'}</span></div>
+      <div class="calc-row"><span class="lbl">Unrealised</span><span class="val ${(ur||0)>=0?'pos':'neg'}">${ur!==null?(ur>=0?'+':'-')+R(Math.abs(ur)):'—'}</span></div>
+      <div class="calc-row big"><span class="lbl">Total</span><span class="val ${p.total>=0?'pos':'neg'}">${p.scored?(p.total>=0?'+':'-')+R(Math.abs(p.total)):'—'}</span></div>
+    </div>
+    <div><label class="f">Mark price &#8377; <span class="hint">— current price for ${esc(p.ticker)}</span></label>
+      <input type="number" class="num-in" step="0.01" value="${p.mark||''}" data-mark="${esc(p.ticker)}"></div>
+    <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin:15px 0 0">His calls on this</h4>
+    ${hist}
+  </div>`;
+}
+
+function renderScore(){
+  const q=quad();
+  const rows=[
+    ['Copied &amp; up',q.made,'made','pos','real gain across the position'],
+    ['Copied &amp; down',q.cost,'cost','neg','real loss — tuition'],
+    ['Skipped &amp; rose',q.missed,'missed','neg','what sitting out cost me'],
+    ['Skipped &amp; fell',q.dodged,'dodged','pos','what sitting out saved me'],
+  ];
+  $('quadBody').innerHTML=rows.map(([n,d,w,cl,meaning])=>
+    `<tr><td>${n}</td><td>${d.n}</td><td class="${d.n?cl:''}">${d.n?(w==='dodged'?'+'+R(Math.abs(d.rs)):(d.rs>=0?'+':'')+R(d.rs)):'—'}</td><td style="font-family:var(--sans);color:var(--ink-2)">${meaning}</td></tr>`
+  ).join('');
+
+  const co=[
+    ['All his calls',S.calls],
+    ['Conviction stocks',S.calls.filter(c=>c.kind!=='etf')],
+    ['ETFs (beta)',S.calls.filter(c=>c.kind==='etf')],
+    ['Copied',S.calls.filter(c=>c.decision==='copied')],
+    ['Skipped',S.calls.filter(c=>c.decision==='skipped')],
+  ];
+  $('sbBody').innerHTML=co.map(([n,g])=>{
+    const ev=g.map(worked).filter(v=>v!==null),ok=ev.filter(Boolean).length;
+    return `<tr><td>${n}</td><td>${g.length}</td><td>${ev.length?ok:'—'}</td><td>${ev.length?Math.round(ok/ev.length*100)+'%':'—'}</td></tr>`;
+  }).join('');
+}
+
+function render(){renderTop();renderCalc();renderLedger();renderScore();}
+
+/* ---------- persistence: Google Sheets via Apps Script ---------- */
+let SYNC=false;
+async function api(action,payload){
+  if(!configured())throw new Error('not configured');
+  const r=await fetch(API,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'}, // text/plain avoids CORS preflight
+    body:JSON.stringify({token:AUTH.get(),action,payload})   // POST body, not the query string
+  });
+  const j=await r.json();
+  if(!j.ok){
+    if(j.error==='unauthorized'){SYNC=false;showTokenModal(true);}
+    throw new Error(j.error||'api error');
+  }
+  return j.data;
+}
+const configured=()=>!!API&&API.indexOf('PASTE')!==0;
+
+/* ---------- the key handoff ---------- */
+function showTokenModal(invalid){
+  document.getElementById('hkr-lock')?.remove();
+  const o=document.createElement('div');
+  o.id='hkr-lock';
+  o.innerHTML=`<div class="lock-card">
+    <h3>Unlock the sheet</h3>
+    <p>Paste the key you set with <code>TEST_setApiToken()</code> in Apps Script. It is stored in this browser only.</p>
+    ${invalid?'<p class="lock-bad">That key was rejected. Try again.</p>':''}
+    <input id="hkr-key" type="password" autocomplete="off" placeholder="API key">
+    <div class="row-btns" style="margin-top:12px">
+      <button class="btn" id="hkr-unlock">Unlock</button>
+      <button class="btn ghost" id="hkr-offline">Work offline</button>
+    </div>
+  </div>`;
+  document.body.appendChild(o);
+  const inp=o.querySelector('#hkr-key');
+  inp.focus();
+  const go=async()=>{
+    const v=inp.value.trim(); if(!v)return;
+    AUTH.set(v); o.remove();
+    await connect();
+  };
+  o.querySelector('#hkr-unlock').onclick=go;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  o.querySelector('#hkr-offline').onclick=()=>{
+    o.remove();
+    warn('Working from this browser only — nothing syncs to the Sheet. Reload to enter your key.');
+  };
+}
+
+/* pull from the sheet and reconcile; used at boot and after a successful unlock */
+async function connect(){
+  try{
+    const d=await api('load');
+    if(d.cfg&&Object.keys(d.cfg).length)S.cfg={...S.cfg,...d.cfg};
+    if(Array.isArray(d.calls))S.calls=d.calls;
+    SYNC=true;ok();local();setupFields();render();
+    if(d.gateOpen)warn('Your Sheet has NO key set — anyone with the web-app URL can read and write it. Run TEST_setApiToken(\'…\') in Apps Script.');
+    return true;
+  }catch(e){
+    if(e.message!=='unauthorized')
+      warn('Could not reach the Sheet ('+e.message+'). Working from this browser only — nothing will sync.');
+    return false;
+  }
+}
+async function save(c){
+  S.calls=S.calls.filter(x=>x.id!==c.id).concat([c]);
+  render();local();
+  if(!SYNC)return;
+  try{await api('upsert',c);ok();}catch(e){warn('Sheet write failed — kept locally. Retry by editing the row again.');}
+}
+async function del(id){
+  S.calls=S.calls.filter(x=>x.id!==id);render();local();
+  if(!SYNC)return;
+  try{await api('delete',{id});ok();}catch(e){warn('Sheet delete failed — removed locally only.');}
+}
+async function saveCfg(){
+  local();
+  if(!SYNC)return;
+  try{await api('config',S.cfg);ok();}catch(e){warn('Sheet config write failed.');}
+}
+function local(){try{localStorage.setItem('hkr',JSON.stringify({calls:S.calls,cfg:S.cfg}));}catch(e){}}
+function warn(m){const b=$('banner');b.textContent=m;b.className='banner warn';}
+function ok(){const b=$('banner');b.style.display='none';}
+
+async function ledgerClick(e){
+  const d=e.target.closest('[data-del]');
+  if(d){if(confirm('Delete this call permanently? The position recomputes without it.'))await del(d.dataset.del);return;}
+  const h=e.target.closest('.entry-h')||e.target.closest('.lot');
+  if(h){S.open=S.open===h.dataset.id?null:h.dataset.id;renderLedger();return;}
+}
+async function ledgerChange(e){
+  const t=e.target.dataset.mark;
+  if(t){setMark(t,+e.target.value||0);await saveCfg();render();}
+}
+$('ledgerList').addEventListener('click',ledgerClick);
+$('ledgerList').addEventListener('change',ledgerChange);
+$('lotList').addEventListener('click',ledgerClick);
+
+function setupFields(){
+  $('setTank').value=S.cfg.tank;$('setMine').value=S.cfg.mine;$('setHis').value=S.cfg.his;
+  $('setRatio').textContent=(ratio()*100).toFixed(2)+'%';
+}
+['setTank','setMine','setHis'].forEach(i=>$(i).addEventListener('input',()=>{
+  const m=+$('setMine').value||0,h=+$('setHis').value||1;
+  $('setRatio').textContent=(m/h*100).toFixed(2)+'%';
+}));
+$('btnSaveSet').onclick=async()=>{
+  // Object.assign, not a fresh object — a bare literal would wipe the m:TICKER marks
+  S.cfg=Object.assign({},S.cfg,{tank:+$('setTank').value||0,mine:+$('setMine').value||0,his:+$('setHis').value||1});
+  await saveCfg();render();setupFields();
+};
+
+/* ---------- tabs ---------- */
+const TABS=['new','ledger','score','setup'];
+function showTab(t){
+  S.tab=t;
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t?'true':'false'));
+  TABS.forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  render();
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+$('filt').addEventListener('change',renderLedger);
+
+/* ---------- new call form ---------- */
+['nHisQty','nHisPrice','nMyPrice'].forEach(i=>$(i).addEventListener('input',renderCalc));
+$('nTicker').addEventListener('input',renderCalc);
+$('nSide').addEventListener('change',renderCalc);
+
+function syncDecision(){
+  const skipped=$('nDecision').value==='skipped';
+  $('nSkipReason').disabled=!skipped;
+  if(!skipped)$('nSkipReason').value='';
+}
+$('nDecision').addEventListener('change',syncDecision);
+
+// crypto.randomUUID rather than Math.random — nothing generated goes near a record
+let seq=0;
+const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID():'c'+Date.now().toString(36)+'-'+(++seq).toString(36);
+
+function say(m,bad){const el=$('lockWarn');el.textContent=m||'';el.style.color=bad?'var(--red)':'var(--ink-3)';}
+
+const FORM=['nTicker','nHisQty','nHisPrice','nMyPrice','nHisThesis','nMyView','nSkipReason'];
+function clearForm(){
+  FORM.forEach(i=>$(i).value='');
+  $('nKind').value='stock';
+  $('nSide').value='buy';
+  $('nDecision').value='copied';
+  $('nDate').value=new Date().toISOString().slice(0,10);
+  syncDecision();renderCalc();
+}
+
+$('btnSave').addEventListener('click',async()=>{
+  const k=renderCalc(), copied=$('nDecision').value==='copied';
+  const ticker=$('nTicker').value.trim().toUpperCase();
+
+  if(!ticker)return say('Ticker is required.',1);
+  if(!$('nDate').value)return say('Date is required.',1);
+  if(k.q<=0||k.hp<=0)return say('His qty and his price are needed — they size the trade and set his entry.',1);
+  if(k.mp<=0)return say('Price now is needed even on a skip — it is what missed/dodged runs on.',1);
+  if(k.sell&&copied&&k.held<=0)return say('You hold no '+ticker+' to sell.',1);
+  if(k.sell&&copied){
+    // positions replay chronologically, so a sell dated before the first buy would
+    // silently book nothing and leave the tank wrong
+    const firstBuy=S.calls.filter(c=>c.ticker===ticker&&c.side==='buy'&&c.decision==='copied')
+      .map(c=>c.date).sort()[0];
+    if(firstBuy&&$('nDate').value<firstBuy)
+      return say('That sell is dated before your first '+ticker+' buy ('+firstBuy+') — it would book nothing. Check the date.',1);
+  }
+  if(copied&&k.sh<1)return say('At '+R(k.mp)+' this works out to under one share. Nothing to '+(k.sell?'sell':'copy')+'.',1);
+  if(!k.sell&&copied&&k.val>money().free&&
+     !confirm('This spends '+R(k.val)+', which is '+R(k.val-money().free)+' past the tank. The tank is a hard cap — log it anyway?'))return;
+
+  await save({
+    id:uid(),
+    createdAt:new Date().toISOString(),
+    date:$('nDate').value,
+    ticker:ticker,
+    kind:$('nKind').value,
+    side:k.sell?'sell':'buy',
+    hisQty:k.q,
+    hisPrice:k.hp,
+    myPrice:k.mp,
+    myShares:k.sh,                 // computed even when skipped — that's the shadow book
+    myValue:copied?k.val:0,        // 0 on a skip, so the tank stays honest
+    hisThesis:$('nHisThesis').value.trim(),
+    myView:$('nMyView').value.trim(),
+    decision:copied?'copied':'skipped',
+    skipReason:copied?'':$('nSkipReason').value.trim()
+  });
+  clearForm();
+  say(copied?(ticker+' '+(k.sell?'sell':'buy')+' logged — '+R(k.val)+(k.sell?' back into the tank.':' out of the tank.'))
+            :(ticker+' logged to the shadow book.'));
+});
+
+$('btnDiscard').addEventListener('click',()=>{
+  const written=['nHisThesis','nMyView'].some(i=>$(i).value.trim());
+  if(written&&!confirm('Clear the form? The written notes will be lost.'))return;
+  clearForm();say('');
+});
+
+/* ---------- boot ---------- */
+(async function(){
+  $('nDate').value=new Date().toISOString().slice(0,10);
+  // 1. paint instantly from local cache
+  try{const raw=localStorage.getItem('hkr');if(raw){const d=JSON.parse(raw);if(d.cfg)S.cfg={...S.cfg,...d.cfg};if(d.calls)S.calls=d.calls;}}catch(e){}
+  setupFields();syncDecision();showTab('new');
+  // 2. then reconcile with the sheet
+  if(!configured()){warn('Not connected to your Sheet — paste your Apps Script URL into API at the top of this file. Saving to this browser only.');return;}
+  if(!AUTH.get()){showTokenModal();return;}   // key handed over once, then remembered
+  await connect();
+})();
+</script>
+</body>
+</html>
